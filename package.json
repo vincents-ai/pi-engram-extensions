@@ -2,19 +2,38 @@
   "name": "@vincents-ai/pi-engram-extensions",
   "version": "0.1.0",
   "description": "Engram extensions and skills for the pi coding agent — persistent memory, orchestration, workflow state machines, model failover, and commit enforcement.",
-  "keywords": ["pi-package", "pi-coding-agent", "engram", "ai-agent"],
+  "keywords": [
+    "pi-package",
+    "pi-coding-agent",
+    "engram",
+    "ai-agent"
+  ],
   "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "https://github.com/vincents-ai/pi-engram-extensions"
   },
   "pi": {
-    "extensions": ["./extensions"],
-    "skills": ["./skills"]
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.4",
+    "vitest": "^4.1.4"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-coding-agent": "*",
     "@sinclair/typebox": "*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:json": "vitest run --reporter=json"
   }
 }
