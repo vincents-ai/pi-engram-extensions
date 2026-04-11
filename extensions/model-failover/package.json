@@ -1,0 +1,7 @@
+{
+  "name": "pi-extension-model-failover",
+  "description": "Local dev only — pi bundles these at runtime",
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
+  }
+}

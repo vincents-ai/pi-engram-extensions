@@ -1,0 +1,9 @@
+{
+  "name": "pi-extension-engram-workflow",
+  "description": "Local dev only — pi bundles these at runtime",
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-ai": "*",
+    "@sinclair/typebox": "*"
+  }
+}

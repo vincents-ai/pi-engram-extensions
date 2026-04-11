@@ -1,0 +1,4 @@
+node_modules/
+extensions/*/node_modules/
+dist/
+*.js.map
