@@ -762,4 +762,183 @@ export default function (pi: ExtensionAPI) {
 			return ok(result.stdout || `Agent '${params.name}' registered`);
 		},
 	});
+
+	// ─── Knowledge ───────────────────────────────────────────────────────────
+
+	pi.registerTool({
+		name: "engram_knowledge_create",
+		description: "Create a knowledge entry (facts, patterns, rules, concepts, procedures, heuristics, skills, techniques). Use for atomic facts about the project, observed patterns, enforceable rules, and domain concepts.",
+		parameters: Type.Object({
+			title: Type.String({ description: "Short title for the knowledge entry" }),
+			content: Type.Optional(Type.String({ description: "Detailed content/explanation" })),
+			knowledge_type: StringEnum([
+				"fact", "pattern", "rule", "concept", "procedure", "heuristic", "skill", "technique", "prompt", "autocomplete",
+			] as const, { description: "Knowledge type (default: fact)" }),
+			confidence: Type.Optional(Type.Number({ description: "Confidence level 0.0-1.0 (default: 0.8)" })),
+			source: Type.Optional(Type.String({ description: "Source of this knowledge" })),
+			tags: Type.Optional(Type.String({ description: "Comma-separated tags" })),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const args = ["knowledge", "create", "--title", params.title, "-k", params.knowledge_type ?? "fact"];
+			if (params.content) args.push("-c", params.content);
+			if (params.confidence !== undefined) args.push("-f", String(params.confidence));
+			if (params.source) args.push("-s", params.source);
+			if (params.tags) args.push("--tags", params.tags);
+
+			const result = await runEngram(args, repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout || "Knowledge entry created");
+		},
+	});
+
+	pi.registerTool({
+		name: "engram_knowledge_list",
+		description: "List knowledge entries. Optionally filter by type or tags.",
+		parameters: Type.Object({
+			knowledge_type: Type.Optional(Type.String({ description: "Filter by type: fact, pattern, rule, concept, procedure, heuristic, skill, technique" })),
+			tags: Type.Optional(Type.String({ description: "Filter by comma-separated tags" })),
+			json: Type.Optional(Type.Boolean({ description: "Output as JSON" })),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const args = ["knowledge", "list"];
+			if (params.knowledge_type) args.push("-k", params.knowledge_type);
+			if (params.tags) args.push("--tags", params.tags);
+			if (params.json) args.push("--json");
+
+			const result = await runEngram(args, repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout || "No knowledge entries found");
+		},
+	});
+
+	pi.registerTool({
+		name: "engram_knowledge_show",
+		description: "Show details of a specific knowledge entry.",
+		parameters: Type.Object({
+			id: Type.String({ description: "Knowledge entry UUID (or 8-char prefix)" }),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const result = await runEngram(["knowledge", "show", params.id], repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout);
+		},
+	});
+
+	// ─── Lesson ───────────────────────────────────────────────────────────
+
+	pi.registerTool({
+		name: "engram_lesson_create",
+		description: "Record a lesson learned from a mistake, bug, or wrong assumption. Every command failure or wrong assumption should generate a lesson.",
+		promptGuidelines: [
+			"Always create a lesson when a command fails or produces unexpected results",
+			"Always create a lesson when you make a wrong assumption about a tool or API",
+			"Include the exact command that failed and the error message",
+		],
+		parameters: Type.Object({
+			title: Type.String({ description: "Short title summarising the lesson" }),
+			mistake: Type.String({ description: "Description of the mistake" }),
+			correction: Type.String({ description: "The correct approach" }),
+			prevention: Type.String({ description: "Rule to prevent recurrence" }),
+			domain: Type.Optional(Type.String({ description: "Domain (e.g. rust, postgres, engram)" })),
+			category: Type.Optional(StringEnum(["code", "domain", "process", "design"] as const, { description: "Category (default: code)" })),
+			severity: Type.Optional(StringEnum(["low", "medium", "high"] as const, { description: "Severity (default: low)" })),
+			tags: Type.Optional(Type.String({ description: "Comma-separated tags" })),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const args = ["lesson", "create", "-t", params.title, "-m", params.mistake, "-c", params.correction, "-p", params.prevention];
+			if (params.domain) args.push("-d", params.domain);
+			if (params.category) args.push("-k", params.category);
+			if (params.severity) args.push("-s", params.severity);
+			if (params.tags) args.push("--tags", params.tags);
+
+			const result = await runEngram(args, repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout || "Lesson recorded");
+		},
+	});
+
+	pi.registerTool({
+		name: "engram_lesson_list",
+		description: "List recorded lessons.",
+		parameters: Type.Object({
+			domain: Type.Optional(Type.String({ description: "Filter by domain" })),
+			category: Type.Optional(Type.String({ description: "Filter by category" })),
+			severity: Type.Optional(Type.String({ description: "Filter by severity" })),
+			json: Type.Optional(Type.Boolean({ description: "Output as JSON" })),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const args = ["lesson", "list"];
+			if (params.json) args.push("--json");
+
+			const result = await runEngram(args, repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout || "No lessons found");
+		},
+	});
+
+	pi.registerTool({
+		name: "engram_lesson_show",
+		description: "Show details of a specific lesson.",
+		parameters: Type.Object({
+			id: Type.String({ description: "Lesson UUID (or 8-char prefix)" }),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const result = await runEngram(["lesson", "show", params.id], repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout);
+		},
+	});
+
+	// ─── Theory ───────────────────────────────────────────────────────────
+
+	pi.registerTool({
+		name: "engram_theory_create",
+		description: "Create a domain theory (Naur, 1985) — a mutable mental model of the project. Use to model understanding of complex systems, track iterations, concepts, mappings, and invariants.",
+		parameters: Type.Object({
+			domain: Type.String({ description: "Domain name (e.g. 'my-project')" }),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const result = await runEngram(["theory", "create", params.domain], repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout || "Theory created");
+		},
+	});
+
+	pi.registerTool({
+		name: "engram_theory_show",
+		description: "Show a domain theory with its concepts, iterations, mappings, and invariants.",
+		parameters: Type.Object({
+			id: Type.String({ description: "Theory UUID (or 8-char prefix)" }),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const result = await runEngram(["theory", "show", params.id], repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout);
+		},
+	});
+
+	pi.registerTool({
+		name: "engram_theory_list",
+		description: "List all domain theories.",
+		parameters: Type.Object({
+			json: Type.Optional(Type.Boolean({ description: "Output as JSON" })),
+			repo_path: REPO_PATH_PARAM,
+		}),
+		async execute(_id, params) {
+			const args = ["theory", "list"];
+			if (params.json) args.push("--json");
+
+			const result = await runEngram(args, repoCwd(params));
+			if (result.code !== 0) return err(`Failed: ${result.stderr}`);
+			return ok(result.stdout || "No theories found");
+		},
+	});
 }

@@ -3,3 +3,4 @@ extensions/*/node_modules/
 dist/
 *.js.map
 coverage/
+failover-errors.ndjson
