@@ -1,5 +1,5 @@
 /**
- * Engram Tools — First-class engraph CLI tools for pi
+ * Engram Tools — First-class engram CLI tools for pi
  *
  * Wraps every commonly-used `engram` subcommand as a typed pi tool,
  * giving the LLM structured parameters instead of raw bash invocations.
@@ -21,13 +21,13 @@ import {
 	DEFAULT_MAX_LINES,
 	formatSize,
 } from "@mariozechner/pi-coding-agent";
+import { runEngram, parseUuid } from "../common/runEngram.js";
 
 const execFileAsync = promisify(execFile);
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Run an engraph command, return truncated stdout. */
-async function runEngram(
+/** Truncate output for LLM consumption. */
 	args: string[],
 	options?: { timeout?: number; cwd?: string; input?: string },
 ): Promise<{ stdout: string; stderr: string; code: number }> {
@@ -89,11 +89,7 @@ function err(text: string) {
 	throw new Error(text);
 }
 
-/** Parse a UUID from engram output lines like "Task 'abc-123' created" */
-function parseUuid(output: string): string | null {
-	const match = output.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-	return match ? match[0] : null;
-}
+// parseUuid imported from common/runEngram.js
 
 // ─── Shared repo_path helpers ──────────────────────────────────────────────────
 
@@ -125,11 +121,11 @@ export default function (pi: ExtensionAPI) {
 		name: "engram_ask",
 		label: "Engram Ask",
 		description:
-			"Natural language search across all engram entities (tasks, context, reasoning, ADRs, sessions). Always run this BEFORE starting any new task to check for prior work.",
+			"Keyword search across all engram entities (use short specific terms, not natural language) (tasks, context, reasoning, ADRs, sessions). Keyword search — use short specific terms like rate limiting API not full sentences.",
 		promptSnippet: "Search engram for prior context, decisions, and findings",
 		promptGuidelines: [
 			"Use `engram_ask` as the first step for any new task — never assume prior state.",
-			"Use specific queries: 'rate limiting API', 'OAuth design decision', 'token validation bug'.",
+			"Use short keyword queries: 'rate limiting', 'OAuth design', 'token validation bug'.",
 		],
 		parameters: Type.Object({
 			query: Type.String({ description: "Natural language query about engram data" }),

@@ -29,13 +29,10 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { truncateHead, DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@mariozechner/pi-coding-agent";
-
-const execFileAsync = promisify(execFile);
+import { runEngram, parseUuid } from "../common/runEngram.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -366,11 +363,7 @@ function truncate(text: string): string {
 	const t = truncateHead(text, { maxLines: DEFAULT_MAX_LINES, maxBytes: DEFAULT_MAX_BYTES });
 	return t.truncated ? t.content + `\n[truncated: ${t.outputLines}/${t.totalLines} lines]` : t.content;
 }
-
-async function runEngram(
-	args: string[],
-	options?: { timeout?: number; cwd?: string },
-): Promise<{ stdout: string; stderr: string; code: number }> {
+> {
 	try {
 		const spawnOpts: Parameters<typeof execFileAsync>[2] = {
 			maxBuffer: 2 * 1024 * 1024,

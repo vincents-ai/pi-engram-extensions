@@ -10,33 +10,12 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { runEngram, parseUuid } from "./common/runEngram.js";
 
 const execFileAsync = promisify(execFile);
 
 const ENGRAM_SESSION_KEY = "engram:session-id";
 const ENGRAM_SESSION_NAME = "engram:session-name";
-
-async function runEngram(
-	args: string[],
-	options?: { timeout?: number; cwd?: string },
-): Promise<{ stdout: string; stderr: string; code: number }> {
-	try {
-		const spawnOpts: Parameters<typeof execFileAsync>[2] = {
-			maxBuffer: 2 * 1024 * 1024,
-			timeout: options?.timeout ?? 15_000,
-		};
-		if (options?.cwd) spawnOpts.cwd = options.cwd;
-		const { stdout, stderr } = await execFileAsync("engram", args, spawnOpts);
-		return { stdout: stdout.trim(), stderr: stderr.trim(), code: 0 };
-	} catch (e: unknown) {
-		const err = e as { stdout?: string; stderr?: string; killed?: boolean; status?: number };
-		return {
-			stdout: (err.stdout ?? "").trim(),
-			stderr: (err.stderr ?? "").trim(),
-			code: err.killed ? 137 : (err.status ?? 1),
-		};
-	}
-}
 
 /** Check if an engram workspace is initialized in the given directory (default: cwd). */
 async function isEngramWorkspace(cwd?: string): Promise<boolean> {
@@ -44,11 +23,7 @@ async function isEngramWorkspace(cwd?: string): Promise<boolean> {
 	return result.code === 0;
 }
 
-/** Parse a UUID from engram output. */
-function parseUuid(output: string): string | null {
-	const match = output.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-	return match ? match[0] : null;
-}
+// parseUuid imported from common/runEngram.js
 
 /** Auto-generate a session name from git branch or fallback. */
 async function autoSessionName(): Promise<string> {

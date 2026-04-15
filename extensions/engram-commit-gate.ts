@@ -10,25 +10,16 @@
  * so the agent can fix the issue.
  */
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { isToolCallEventType, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-const execFileAsync = promisify(execFile);
+import { runEngram } from "./common/runEngram.js";
 
 const UUID_PATTERN = /\[[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\]/i;
-
-async function runEngram(
-	args: string[],
-	options?: { cwd?: string },
-): Promise<{ stdout: string; stderr: string; code: number }> {
+> {
 	try {
-		const spawnOpts: Parameters<typeof execFileAsync>[2] = {
 			maxBuffer: 1024 * 1024,
 			timeout: 10_000,
 		};
 		if (options?.cwd) spawnOpts.cwd = options.cwd;
-		const { stdout, stderr } = await execFileAsync("engram", args, spawnOpts);
 		return { stdout: stdout.trim(), stderr: stderr.trim(), code: 0 };
 	} catch (e: unknown) {
 		const err = e as { stdout?: string; stderr?: string; status?: number };
