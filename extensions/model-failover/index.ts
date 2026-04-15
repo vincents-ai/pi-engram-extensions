@@ -275,6 +275,7 @@ function entryLabel(entry: FailoverModelEntry): string {
 // ─── Extension ────────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+	let manualOverride: boolean = false;
 	let state: FailoverState = {
 		config: { ...FAILOVER_CONFIG_DEFAULTS, models: [] },
 		cooldowns: new Map(),
@@ -307,10 +308,11 @@ export default function (pi: ExtensionAPI) {
 		const entry = findConfigEntry(state.config, event.model.provider, event.model.id);
 		state.currentPriority = entry?.priority ?? null;
 
-		// If user manually picked a model, reset the requeue counter
+		// If user manually picked a model, respect their choice
 		if (event.source !== "session_restore") {
 			state.requeueAttempts = 0;
 			state.failoverActive = false;
+			manualOverride = true;
 		}
 		updateStatus(ctx);
 	});
@@ -322,6 +324,9 @@ export default function (pi: ExtensionAPI) {
 		if (typeof event.prompt === "string") {
 			state.lastPrompt = event.prompt;
 		}
+
+		// If user manually chose a model, don't override it
+		if (manualOverride) return;
 
 		// If auto-return is enabled and we're not on the preferred model, check cooldowns
 		if (state.config.autoReturnToPreferred && state.currentPriority !== null && state.currentPriority > 1) {
@@ -434,14 +439,17 @@ export default function (pi: ExtensionAPI) {
 		);
 		updateStatus(ctx);
 
+		// Clear manual override when a rate limit forces a switch
+		manualOverride = false;
+
 		// Auto-requeue the failed message if configured
 		if (state.config.autoRequeue && state.lastPrompt && state.requeueAttempts < state.config.maxRequeueAttempts) {
 			state.requeueAttempts++;
 			ctx.ui.notify(
-				`↩ Re-sending your message on ${entryLabel(next)}... (attempt ${state.requeueAttempts}/${state.config.maxRequeueAttempts})`,
+				`↩ Continuing on ${entryLabel(next)}... (attempt ${state.requeueAttempts}/${state.config.maxRequeueAttempts})`,
 				"info",
 			);
-			pi.sendUserMessage(state.lastPrompt, { deliverAs: "followUp" });
+			pi.sendUserMessage("Continue where you left off on the previous model.", { deliverAs: "followUp" });
 		} else if (state.requeueAttempts >= state.config.maxRequeueAttempts) {
 			ctx.ui.notify(
 				`⚠️ Max requeue attempts (${state.config.maxRequeueAttempts}) reached. Please resend manually.`,
@@ -551,6 +559,7 @@ export default function (pi: ExtensionAPI) {
 			state.requeueAttempts = 0;
 			state.failoverActive = false;
 			state.handledErrorIds.clear();
+			manualOverride = false;
 
 			const preferred = findPreferredModel(state, ctx);
 			if (preferred) {
