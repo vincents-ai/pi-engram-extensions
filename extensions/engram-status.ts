@@ -5,8 +5,38 @@
  * in the pi TUI status bar. Updates on relevant engram tool calls.
  */
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { runEngram, parseUuid } from "./common/runEngram.js";
+
+const execFileAsync = promisify(execFile);
+
+async function runEngram(
+	args: string[],
+	options?: { cwd?: string },
+): Promise<{ stdout: string; stderr: string; code: number }> {
+	try {
+		const spawnOpts: Parameters<typeof execFileAsync>[2] = {
+			maxBuffer: 512 * 1024,
+			timeout: 5_000,
+		};
+		if (options?.cwd) spawnOpts.cwd = options.cwd;
+		const { stdout, stderr } = await execFileAsync("engram", args, spawnOpts);
+		return { stdout: stdout.trim(), stderr: stderr.trim(), code: 0 };
+	} catch (e: unknown) {
+		const err = e as { stdout?: string; stderr?: string; status?: number };
+		return {
+			stdout: (err.stdout ?? "").trim(),
+			stderr: (err.stderr ?? "").trim(),
+			code: err.status ?? 1,
+		};
+	}
+}
+
+function parseUuid(output: string): string | null {
+	const match = output.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+	return match ? match[0] : null;
+}
 
 export default function (pi: ExtensionAPI) {
 	let currentSessionId: string | null = null;
@@ -25,13 +55,13 @@ export default function (pi: ExtensionAPI) {
 
 		if (currentTaskId) {
 			const taskPart = taskStatus
-				? currentTaskId.slice(0, 8) + ":" + taskStatus
+				? `${currentTaskId.slice(0, 8)}:${taskStatus}`
 				: currentTaskId.slice(0, 8);
 			parts.push(taskPart);
 		}
 
 		if (parts.length > 0) {
-			ctx.ui.setStatus("engram", "⚙ " + parts.join(" | "));
+			ctx.ui.setStatus("engram", `⚙ ${parts.join(" | ")}`);
 		} else {
 			ctx.ui.setStatus("engram", "⚙ ready");
 		}

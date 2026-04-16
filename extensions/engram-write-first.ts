@@ -6,7 +6,6 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { runEngram, parseUuid } from "./common/runEngram.js";
 
 const ENGRAM_WRITE_TOOLS = new Set([
 	"engram_context_create",

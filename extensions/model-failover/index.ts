@@ -81,23 +81,6 @@ const RATE_LIMIT_PATTERNS: RegExp[] = [
 	/try again (later|in \d)/i,  // generic retry hint
 ];
 
-/** Append a structured error entry to the gitignored log file. */
-function appendErrorLog(logPath: string, entry: {
-		timestamp: string;
-		model: string;
-		provider: string;
-		rateLimited: boolean;
-		error: string;
-		action: string;
-	}): void {
-	try {
-		const line = JSON.stringify(entry) + "\n";
-		fs.appendFileSync(logPath, line, "utf-8");
-	} catch {
-		// Best-effort — never break the main flow for logging
-	}
-}
-
 /** Returns true if this error message looks like a rate limit. */
 function isRateLimitError(msg: string): boolean {
 	return RATE_LIMIT_PATTERNS.some((p) => p.test(msg));
@@ -293,7 +276,6 @@ function entryLabel(entry: FailoverModelEntry): string {
 
 export default function (pi: ExtensionAPI) {
 	let manualOverride: boolean = false;
-	let logFilePath = "";
 	let state: FailoverState = {
 		config: { ...FAILOVER_CONFIG_DEFAULTS, models: [] },
 		cooldowns: new Map(),
@@ -317,8 +299,6 @@ export default function (pi: ExtensionAPI) {
 			failoverActive: false,
 			handledErrorIds: new Set(),
 		};
-		// Resolve log file path (next to failover.json)
-		logFilePath = path.join(path.dirname(findConfigPath(ctx.cwd)), "failover-errors.ndjson");
 		updateStatus(ctx);
 	});
 
@@ -401,14 +381,6 @@ export default function (pi: ExtensionAPI) {
 		if (!isRateLimitError(errorMsg)) {
 			// Show the error but don't switch
 			ctx.ui.notify(`API error: ${errorMsg.slice(0, 120)}`, "error");
-			appendErrorLog(logFilePath, {
-				timestamp: new Date().toISOString(),
-				model: currentModel?.id ?? "unknown",
-				provider: currentModel?.provider ?? "unknown",
-				rateLimited: false,
-				error: errorMsg.slice(0, 200),
-				action: "none (non-rate-limit)",
-			});
 			return;
 		}
 
@@ -441,14 +413,6 @@ export default function (pi: ExtensionAPI) {
 
 		// Find the next available model
 		const next = findNextModel(state, ctx, true);
-		appendErrorLog(logFilePath, {
-			timestamp: new Date().toISOString(),
-			model: currentModel.id,
-			provider: currentModel.provider,
-			rateLimited: true,
-			error: errorMsg.slice(0, 200),
-			action: next ? `failover to ${next.provider}/${next.model}` : "no fallback available",
-		});
 		if (!next) {
 			ctx.ui.notify(
 				"⛔ All models in the failover list are rate-limited or unavailable. Edit .pi/failover.json to add more.",

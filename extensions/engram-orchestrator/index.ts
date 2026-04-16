@@ -15,14 +15,21 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { truncateHead, DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize } from "@mariozechner/pi-coding-agent";
-import { runEngram, parseUuid } from "../common/runEngram.js";
+
+const execFileAsync = promisify(execFile);
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-> {
+
+async function runEngram(
+	args: string[],
+	options?: { timeout?: number; cwd?: string },
+): Promise<{ stdout: string; stderr: string; code: number }> {
 	try {
 		const spawnOpts: Parameters<typeof execFileAsync>[2] = {
 			maxBuffer: 2 * 1024 * 1024,
@@ -39,6 +46,11 @@ import { runEngram, parseUuid } from "../common/runEngram.js";
 			code: err.status ?? 1,
 		};
 	}
+}
+
+function parseUuid(output: string): string | null {
+	const match = output.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+	return match ? match[0] : null;
 }
 
 function truncate(text: string): string {
